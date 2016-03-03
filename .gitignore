@@ -1,0 +1,4 @@
+*.suo
+ScriptLab/bin/
+ScriptLab/obj/
+*.user
