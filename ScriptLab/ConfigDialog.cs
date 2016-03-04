@@ -72,7 +72,8 @@ namespace pyrochild.effects.scriptlab
                 {
                     Effect effect = (Effect)(RawEffects[i].GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
 
-                    if ((effect.Category != EffectCategory.DoNotDisplay || RawEffects[i].FullName == "PaintDotNet.Effects.RotateZoomEffect")
+                    if ((effect.Category != EffectCategory.DoNotDisplay //effects that don't want to be shown
+                        || effect is RotateZoomEffect) //unless it's the rotatezoomeffect which hides itself from the ffects menu so it can be put in Layers
                         && !AvailableEffects.ContainsKey(RawEffects[i].FullName + ":" + effect.Name))
                     {
                         AvailableEffects.Add(RawEffects[i].FullName + ":" + effect.Name, RawEffects[i]);
