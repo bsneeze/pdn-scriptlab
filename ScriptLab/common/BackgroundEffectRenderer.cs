@@ -249,9 +249,7 @@ namespace pyrochild.effects.common
                         token = effectTokenCopy.CloneT();
                     }
 
-                    ThreadPriority? priority = ((i & 3) == 0) ? null : (ThreadPriority?)ThreadPriority.BelowNormal;
-
-                    threadPool.QueueUserWorkItem(rcwc, token, priority);
+                    threadPool.QueueUserWorkItem(rcwc, token);
                 }
 
                 threadPool.Drain();
@@ -624,12 +622,6 @@ namespace pyrochild.effects.common
                 {
                     dstArgs.Dispose();
                     dstArgs = null;
-                }
-
-                if (threadPool != null)
-                {
-                    threadPool.Dispose();
-                    threadPool = null;
                 }
             }
         }

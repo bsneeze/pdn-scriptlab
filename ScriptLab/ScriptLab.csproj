@@ -204,6 +204,7 @@
     <Compile Include="common\CommonUtil.cs" />
     <Compile Include="common\Extensions.cs" />
     <Compile Include="common\FileMan.cs" />
+    <Compile Include="common\PrivateThreadPool.cs" />
     <Compile Include="common\RenderedTileEventArgs.cs" />
     <Compile Include="common\RenderedTileEventHandler.cs" />
     <Compile Include="common\SerializationBinder.cs" />
