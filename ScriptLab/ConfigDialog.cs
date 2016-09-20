@@ -243,20 +243,30 @@ namespace pyrochild.effects.scriptlab
                 effect.Services = Services;
                 if (effect.CheckForEffectFlags(EffectFlags.Configurable))
                 {
-                    EffectConfigDialog dialog = effect.CreateConfigDialog();
-                    dialog.EffectSourceSurface = EffectSourceSurface;
-                    dialog.Selection = Selection;
-                    dialog.Effect = effect;
-                    if (effect.Image != null)
+                    try
                     {
-                        dialog.Icon = effect.Image.ToIcon();
-                    }
+                        EffectConfigDialog dialog = effect.CreateConfigDialog();
+                        dialog.EffectSourceSurface = EffectSourceSurface;
+                        dialog.Selection = Selection;
+                        dialog.Effect = effect;
+                        if (effect.Image != null)
+                        {
+                            dialog.Icon = effect.Image.ToIcon();
+                        }
 
-                    if (dialog.ShowDialog(this) == DialogResult.OK)
+                        if (dialog.ShowDialog(this) == DialogResult.OK)
+                        {
+                            token.effects.Add(new ScriptStep(effect.Name, effect.Image, t, dialog.EffectToken, Effect.EnvironmentParameters.PrimaryColor, Effect.EnvironmentParameters.SecondaryColor));
+                            lbScript.Items.Add(effect.Name);
+                            FinishTokenUpdate();
+                        }
+                    }
+                    catch (Exception e)
                     {
-                        token.effects.Add(new ScriptStep(effect.Name, effect.Image, t, dialog.EffectToken, Effect.EnvironmentParameters.PrimaryColor, Effect.EnvironmentParameters.SecondaryColor));
-                        lbScript.Items.Add(effect.Name);
-                        FinishTokenUpdate();
+                        MessageBox.Show(this,
+                            "Error occurred in configuration dialog for " + effect.Name + ":\n\n" + e.ToString(),
+                            effect.Name+" Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
                 else
@@ -355,22 +365,31 @@ namespace pyrochild.effects.scriptlab
                     effect.Services = Services;
                     if (effect.CheckForEffectFlags(EffectFlags.Configurable))
                     {
-                        EffectConfigDialog dialog = effect.CreateConfigDialog();
-                        dialog.EffectSourceSurface = EffectSourceSurface;
-                        dialog.Selection = Selection;
-                        dialog.Effect = effect;
-                        dialog.EffectToken = (EffectConfigToken)step.Token.Clone();
-                        if (effect.Image != null)
+                        try
                         {
-                            dialog.Icon = Icon.FromHandle(((Bitmap)effect.Image).GetHicon());
-                        }
+                            EffectConfigDialog dialog = effect.CreateConfigDialog();
+                            dialog.EffectSourceSurface = EffectSourceSurface;
+                            dialog.Selection = Selection;
+                            dialog.Effect = effect;
+                            dialog.EffectToken = (EffectConfigToken)step.Token.Clone();
+                            if (effect.Image != null)
+                            {
+                                dialog.Icon = Icon.FromHandle(((Bitmap)effect.Image).GetHicon());
+                            }
 
-                        if (dialog.ShowDialog(this) == DialogResult.OK)
-                        {
-                            step.Token = dialog.EffectToken;
-                            FinishTokenUpdate();
+                            if (dialog.ShowDialog(this) == DialogResult.OK)
+                            {
+                                step.Token = dialog.EffectToken;
+                                FinishTokenUpdate();
+                            }
                         }
-
+                        catch (Exception e)
+                    {
+                        MessageBox.Show(this,
+                            "Error occurred in configuration dialog for " + effect.Name + ":\n\n" + e.ToString(),
+                            effect.Name+" Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                     }
                 }
                 else

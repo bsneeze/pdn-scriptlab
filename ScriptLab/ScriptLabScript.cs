@@ -239,42 +239,39 @@ namespace pyrochild.effects.scriptlab
                     effect.EnvironmentParameters = new EffectEnvironmentParameters(allcolors[i].First, allcolors[i].Second, 2, new PdnRegion(effectSourceSurface.Bounds), effectSourceSurface);
                     if (effect.CheckForEffectFlags(EffectFlags.Configurable))
                     {
-                        EffectConfigDialog dialog = effect.CreateConfigDialog();
-                        stepToken = dialog.EffectToken;
-                        if (effect is PropertyBasedEffect)
+                        try
                         {
-                            PropertyBasedEffectConfigToken pbect = stepToken as PropertyBasedEffectConfigToken;
-                            IEnumerator<Property> enumerator = pbect.Properties.Properties.GetEnumerator();
-                            for (int ii = 0; ii < Properties[i].Length; ii++)
+                            EffectConfigDialog dialog = effect.CreateConfigDialog();
+                            stepToken = dialog.EffectToken;
+                            if (effect is PropertyBasedEffect)
                             {
-                                try
+                                PropertyBasedEffectConfigToken pbect = stepToken as PropertyBasedEffectConfigToken;
+                                IEnumerator<Property> enumerator = pbect.Properties.Properties.GetEnumerator();
+                                for (int ii = 0; ii < Properties[i].Length; ii++)
                                 {
-                                    enumerator.MoveNext();
-                                    enumerator.Current.ReadOnly = false;
-                                    if (enumerator.Current.Value is FontFamily)
+                                    try
                                     {
-                                        enumerator.Current.Value = new FontFamily((string)Properties[i][ii]);
+                                        enumerator.MoveNext();
+                                        enumerator.Current.ReadOnly = false;
+                                        if (enumerator.Current.Value is FontFamily)
+                                        {
+                                            enumerator.Current.Value = new FontFamily((string)Properties[i][ii]);
+                                        }
+                                        else
+                                        {
+                                            enumerator.Current.Value = Properties[i][ii];
+                                        }
                                     }
-                                    else
-                                    {
-                                        enumerator.Current.Value = Properties[i][ii];
-                                    }
+                                    catch (ReadOnlyException) { }
                                 }
-                                catch (ReadOnlyException) { }
+                            }
+                            else
+                            {
+                                    Type t = stepToken.GetType();
+                                    SetObjectPropertiesAndFields(stepToken, Properties[i], Fields[i], effects, services, effectSourceSurface);
                             }
                         }
-                        else
-                        {
-                            try
-                            {
-                                Type t = stepToken.GetType();
-
-                                SetObjectPropertiesAndFields(stepToken, Properties[i], Fields[i], effects, services, effectSourceSurface);
-                            }
-                            catch (Exception e)
-                            {
-                            }
-                        }
+                        catch (Exception) { }
                     }
                     token.effects.Add(new ScriptStep(effect.Name, effect.Image, type, stepToken, Colors[i].First, Colors[i].Second));
                 }
