@@ -17,7 +17,7 @@ namespace pyrochild.effects.scriptlab
         private bool changed = true;
 
         public ScriptLab()
-            : base(StaticName, StaticIcon, StaticSubMenuName, EffectFlags.SingleRenderCall | EffectFlags.SingleThreaded | EffectFlags.Configurable)
+            : base(StaticName, StaticIcon, StaticSubMenuName, StaticOptions)
         {
         }
 
@@ -54,6 +54,18 @@ namespace pyrochild.effects.scriptlab
             }
         }
 
+        public static EffectOptions StaticOptions
+        {
+            get
+            {
+                return new EffectOptions
+                {
+                    Flags = EffectFlags.SingleThreaded | EffectFlags.Configurable,
+                    RenderingSchedule = EffectRenderingSchedule.None
+                };
+            }
+        }
+
         public override EffectConfigDialog CreateConfigDialog()
         {
             dialog = new ConfigDialog();
@@ -75,7 +87,7 @@ namespace pyrochild.effects.scriptlab
         public override void Render(EffectConfigToken parameters, RenderArgs dstArgs, RenderArgs srcArgs, Rectangle[] rois, int startIndex, int length)
         {
             ConfigToken token = (ConfigToken)parameters;
-            PdnRegion selection = EnvironmentParameters.GetSelection(srcArgs.Bounds);
+            PdnRegion selection = EnvironmentParameters.GetSelectionAsPdnRegion();
 
             if (changed)
             {

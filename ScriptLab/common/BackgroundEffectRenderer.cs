@@ -568,7 +568,7 @@ namespace pyrochild.effects.common
             this.renderRegion.Intersect(dstArgs.Bounds);
 
             this.tileCount = tileCount;
-            if (effect.CheckForEffectFlags(EffectFlags.SingleRenderCall))
+            if (effect.Options.RenderingSchedule == EffectRenderingSchedule.None)
             {
                 this.tileCount = 1;
             }
@@ -583,7 +583,7 @@ namespace pyrochild.effects.common
             }
 
             this.workerThreads = workerThreads;
-            if (effect.CheckForEffectFlags(EffectFlags.SingleThreaded))
+            if (effect.Options.Flags.HasFlag(EffectFlags.SingleThreaded))
             {
                 this.workerThreads = 1;
             }
