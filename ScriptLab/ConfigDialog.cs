@@ -241,18 +241,12 @@ namespace pyrochild.effects.scriptlab
                 Effect effect = (Effect)t.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                 effect.EnvironmentParameters = Effect.EnvironmentParameters;
                 effect.Services = Services;
-                if (effect.CheckForEffectFlags(EffectFlags.Configurable))
+                if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
                 {
                     try
                     {
                         EffectConfigDialog dialog = effect.CreateConfigDialog();
-                        dialog.EffectSourceSurface = EffectSourceSurface;
-                        dialog.Selection = Selection;
                         dialog.Effect = effect;
-                        if (effect.Image != null)
-                        {
-                            dialog.Icon = effect.Image.ToIcon();
-                        }
 
                         if (dialog.ShowDialog(this) == DialogResult.OK)
                         {
@@ -363,19 +357,13 @@ namespace pyrochild.effects.scriptlab
                     Effect effect = (Effect)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                     effect.EnvironmentParameters = Effect.EnvironmentParameters;
                     effect.Services = Services;
-                    if (effect.CheckForEffectFlags(EffectFlags.Configurable))
+                    if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
                     {
                         try
                         {
                             EffectConfigDialog dialog = effect.CreateConfigDialog();
-                            dialog.EffectSourceSurface = EffectSourceSurface;
-                            dialog.Selection = Selection;
                             dialog.Effect = effect;
                             dialog.EffectToken = (EffectConfigToken)step.Token.Clone();
-                            if (effect.Image != null)
-                            {
-                                dialog.Icon = Icon.FromHandle(((Bitmap)effect.Image).GetHicon());
-                            }
 
                             if (dialog.ShowDialog(this) == DialogResult.OK)
                             {
@@ -482,7 +470,7 @@ namespace pyrochild.effects.scriptlab
                         Effect effect = (Effect)effecttype.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                         effect.EnvironmentParameters = Effect.EnvironmentParameters;
                         effect.Services = Services;
-                        if (effect.CheckForEffectFlags(EffectFlags.Configurable))
+                        if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
                         {
                             EffectConfigDialog dialog = effect.CreateConfigDialog();
                             EffectConfigToken token = dialog.EffectToken;
@@ -559,7 +547,7 @@ namespace pyrochild.effects.scriptlab
             {
                 ScriptLabScript sls = o as ScriptLabScript;
                 sls.ForceCompatibility();
-                ConfigToken token = sls.ToToken(AvailableEffects, Services, EffectSourceSurface);
+                ConfigToken token = sls.ToToken(AvailableEffects, Services, EnvironmentParameters.SourceSurface);
                 lbScript.Items.Clear();
                 ((ConfigToken)theEffectToken).effects.Clear();
                 ((ConfigToken)theEffectToken).effects.AddRange(token.effects);
@@ -869,7 +857,7 @@ namespace pyrochild.effects.scriptlab
                 if (type != null)
                 {
                     Effect effect = (Effect)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                    if (effect.CheckForEffectFlags(EffectFlags.Configurable))
+                    if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
                     {
                         btnChange.Enabled = true;
                     }
