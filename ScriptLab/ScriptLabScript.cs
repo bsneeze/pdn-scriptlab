@@ -88,13 +88,13 @@ namespace pyrochild.effects.scriptlab
 
             foreach (ScriptStep step in token.effects)
             {
-                if (step.EffectType == null)
+                if (!step.EffectAvailable)
                 {
                     sls.Add(step.Name, step.Name, new object[0], new object[0], Pair.Create(step.PrimaryColor, step.SecondaryColor));
                 }
                 else if (step.Token == null)
                 {
-                    sls.Add(step.EffectType.FullName + ":" + step.Name, step.Name, null, null, Pair.Create(step.PrimaryColor, step.SecondaryColor));
+                    sls.Add(step.EffectKey, step.Name, null, null, Pair.Create(step.PrimaryColor, step.SecondaryColor));
                 }
                 else if (step.Token is PropertyBasedEffectConfigToken)
                 {
@@ -117,13 +117,13 @@ namespace pyrochild.effects.scriptlab
                         }
                     }
 
-                    sls.Add(step.EffectType.FullName + ":" + step.Name, step.Name, properties, null, Pair.Create(step.PrimaryColor, step.SecondaryColor));
+                    sls.Add(step.EffectKey, step.Name, properties, null, Pair.Create(step.PrimaryColor, step.SecondaryColor));
                 }
                 else
                 {
                     object[][] propertiesAndFields = MembersToObjectArray(step.Token);
 
-                    sls.Add(step.EffectType.FullName + ":" + step.Name, step.Name, propertiesAndFields[0], propertiesAndFields[1], Pair.Create(step.PrimaryColor, step.SecondaryColor));
+                    sls.Add(step.EffectKey, step.Name, propertiesAndFields[0], propertiesAndFields[1], Pair.Create(step.PrimaryColor, step.SecondaryColor));
                 }
             }
 
@@ -224,17 +224,17 @@ namespace pyrochild.effects.scriptlab
             }
         }
 
-        public ConfigToken ToToken(Dictionary<string,Type> effects, IServiceProvider services, Surface effectSourceSurface)
+        public ConfigToken ToToken(Dictionary<string, IEffectInfo> effects, IServiceProvider services, Surface effectSourceSurface)
         {
             ConfigToken token = new ConfigToken();
 
             for (int i = 0; i < Effects.Count; i++)
             {
                 EffectConfigToken stepToken = null;
-                Type type;
-                if (effects.TryGetValue(Effects[i], out type))
+                IEffectInfo effectInfo;
+                if (effects.TryGetValue(Effects[i], out effectInfo))
                 {
-                    Effect effect = (Effect)(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                    Effect effect = effectInfo.CreateInstance();
                     effect.Services = services;
                     effect.EnvironmentParameters = new EffectEnvironmentParameters(allcolors[i].First, allcolors[i].Second, 2, Document.DefaultResolution, new PdnRegion(effectSourceSurface.Bounds), effectSourceSurface);
                     if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
@@ -273,18 +273,18 @@ namespace pyrochild.effects.scriptlab
                         }
                         catch (Exception) { }
                     }
-                    token.effects.Add(new ScriptStep(effect.Name, effect.Image, type, stepToken, Colors[i].First, Colors[i].Second));
+                    token.effects.Add(new ScriptStep(effectInfo, stepToken, Colors[i].First, Colors[i].Second));
                 }
                 else
                 {
-                    token.effects.Add(new ScriptStep(Effects[i], null, null, null, Colors[i].First, Colors[i].Second));
+                    token.effects.Add(new ScriptStep(Effects[i], Colors[i].First, Colors[i].Second));
                 }
             }
 
             return token;
         }
 
-        private static void SetObjectProperty(object obj, PropertyInfo propertyInfo, object val, Dictionary<string, Type> effects, IServiceProvider services, Surface effectSourceSurface)
+        private static void SetObjectProperty(object obj, PropertyInfo propertyInfo, object val, Dictionary<string, IEffectInfo> effects, IServiceProvider services, Surface effectSourceSurface)
         {
             if (val != null)
             {
@@ -311,7 +311,7 @@ namespace pyrochild.effects.scriptlab
             }
         }
 
-        private static void SetObjectField(object obj, FieldInfo fieldInfo, object val, Dictionary<string, Type> effects, IServiceProvider services, Surface effectSourceSurface)
+        private static void SetObjectField(object obj, FieldInfo fieldInfo, object val, Dictionary<string, IEffectInfo> effects, IServiceProvider services, Surface effectSourceSurface)
         {
             if (val != null)
             {
@@ -339,7 +339,7 @@ namespace pyrochild.effects.scriptlab
             }
         }
 
-        private static void SetObjectPropertiesAndFields(object val, object[] properties, object[] fields, Dictionary<string, Type> effects, IServiceProvider services, Surface effectSourceSurface)
+        private static void SetObjectPropertiesAndFields(object val, object[] properties, object[] fields, Dictionary<string, IEffectInfo> effects, IServiceProvider services, Surface effectSourceSurface)
         {
             Type type = val.GetType();
             PropertyInfo[] pi = type.GetProperties();

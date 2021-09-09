@@ -105,16 +105,15 @@ namespace pyrochild.effects.scriptlab
                     for (int i = 0; i < token.effects.Count; ++i)
                     {
                         ScriptStep step = token.effects[i];
-                        Type type = step.EffectType;
 
-                        if (type == null)
+                        if (!step.EffectAvailable)
                         {
                             if (dialog != null)
                                 dialog.IncrementProgressBarValue(i, 1);
                         }
                         else
                         {
-                            Effect effect = (Effect)(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                            Effect effect = step.CreateInstance();
                             effect.Services = Services;
                             effect.EnvironmentParameters = new EffectEnvironmentParameters(
                                 step.PrimaryColor,
