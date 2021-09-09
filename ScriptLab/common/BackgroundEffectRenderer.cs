@@ -47,7 +47,7 @@ namespace pyrochild.effects.common
         private Rectangle[][] tileRegions;
         private PdnRegion[] tilePdnRegions;
         private int tileCount;
-        private PrivateThreadPool threadPool;
+        private EffectRendererWorkItemQueue threadPool;
         private RenderArgs dstArgs;
         private RenderArgs srcArgs;
         private int workerThreads;
@@ -183,8 +183,8 @@ namespace pyrochild.effects.common
                         int srcStride = srcArgs.Surface.Stride;
                         int clipMaskStride = clipMask.Stride;
 
-                        ColorBgra* dstNextRowPtr = dstArgs.Surface.GetPointAddress(left, top);
-                        ColorBgra* srcNextRowPtr = srcArgs.Surface.GetPointAddress(left, top);
+                        ColorBgra* dstNextRowPtr = dstArgs.Surface.GetPointPointer(left, top);
+                        ColorBgra* srcNextRowPtr = srcArgs.Surface.GetPointPointer(left, top);
                         byte* clipMaskNextRowPtr = (byte*)clipMask.Scan0;
 
                         int rows = height;
@@ -249,10 +249,10 @@ namespace pyrochild.effects.common
                         token = effectTokenCopy.CloneT();
                     }
 
-                    threadPool.QueueUserWorkItem(rcwc, token);
+                    this.threadPool.Enqueue(() => rcwc(token));
                 }
 
-                threadPool.Drain();
+                threadPool.Join();
 
                 /*
                 if (i == this.workerThreads)
@@ -275,7 +275,7 @@ namespace pyrochild.effects.common
                 {
                     try
                     {
-                        threadPoolP.Drain();
+                        threadPoolP.Join();
                     }
 
                     catch (Exception)
@@ -380,7 +380,7 @@ namespace pyrochild.effects.common
                 }
 
                 Join();
-                threadPool.Drain();
+                threadPool.Join();
             }
         }
 
@@ -590,7 +590,10 @@ namespace pyrochild.effects.common
 
             this.clipMaskRenderer = clipMaskRenderer;
 
-            threadPool = new PrivateThreadPool(this.workerThreads, false);
+            threadPool = new EffectRendererWorkItemQueue(
+                MultithreadedWorkItemDispatcher.Default,
+                WorkItemQueuePriority.Normal,
+                workerThreads);
         }
 
         ~BackgroundEffectRenderer()

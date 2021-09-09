@@ -120,6 +120,7 @@ namespace pyrochild.effects.scriptlab
                                 step.PrimaryColor,
                                 step.SecondaryColor,
                                 EnvironmentParameters.BrushWidth,
+                                Document.DefaultResolution,
                                 selection,
                                 EnvironmentParameters.SourceSurface);
 

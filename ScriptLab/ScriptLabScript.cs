@@ -236,7 +236,7 @@ namespace pyrochild.effects.scriptlab
                 {
                     Effect effect = (Effect)(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                     effect.Services = services;
-                    effect.EnvironmentParameters = new EffectEnvironmentParameters(allcolors[i].First, allcolors[i].Second, 2, new PdnRegion(effectSourceSurface.Bounds), effectSourceSurface);
+                    effect.EnvironmentParameters = new EffectEnvironmentParameters(allcolors[i].First, allcolors[i].Second, 2, Document.DefaultResolution, new PdnRegion(effectSourceSurface.Bounds), effectSourceSurface);
                     if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
                     {
                         try
