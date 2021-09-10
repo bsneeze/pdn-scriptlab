@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -14,7 +15,7 @@ namespace pyrochild.effects.scriptlab
 {
     public partial class ConfigDialog : EffectConfigDialog
     {
-        Dictionary<string, Type> AvailableEffects = new Dictionary<string, Type>();
+        Dictionary<string, IEffectInfo> AvailableEffects = new Dictionary<string, IEffectInfo>();
         List<Image> AvailableEffectsIcons;
         List<string> AvailableEffectsNames;
 
@@ -37,66 +38,39 @@ namespace pyrochild.effects.scriptlab
             btnDonate.Image = new Bitmap(typeof(ScriptLab), "images.money.png");
             btnChangeColor.Image = new Bitmap(typeof(ScriptLab), "images.colorwheel.png");
             Text = ScriptLab.StaticDialogName;
+        }
 
-            List<Type> RawEffects = CommonUtil.GatherEffects();
+        protected override void OnLoad(EventArgs e)
+        {
+            string slName = this.Effect.Name;
 
-            RawEffects.Sort((t1, t2) =>
-            {
-                try
-                {
-                    string e1 = ((Effect)(t1.GetConstructor(Type.EmptyTypes).Invoke(new object[0]))).Name;
-                    string e2 = ((Effect)(t2.GetConstructor(Type.EmptyTypes).Invoke(new object[0]))).Name;
-                    if (e1.Contains("&"))
-                    {
-                        e1 = e1.Remove(e1.IndexOf("&"), 1);
-                    }
-                    if (e2.Contains("&"))
-                    {
-                        e2 = e2.Remove(e2.IndexOf("&"), 1);
-                    }
-
-                    return e1.CompareTo(e2);
-                }
-                catch
-                {
-                    return 0;
-                }
-            });
+            List<IEffectInfo> RawEffects = this.Services
+                .GetService<IEffectsService>().EffectInfos
+                .Where(x => x.Name != slName)
+                .OrderBy(x => x.Name)
+                .ToList();
 
             AvailableEffectsNames = new List<string>();
             AvailableEffectsIcons = new List<Image>();
 
             for (int i = 0; i < RawEffects.Count; i++)
             {
-                try
+                if ((RawEffects[i].Category != EffectCategory.DoNotDisplay //effects that don't want to be shown
+                    || RawEffects[i].Type.Name == nameof(RotateZoomEffect)) //unless it's the rotatezoomeffect which hides itself from the ffects menu so it can be put in Layers
+                    && !AvailableEffects.ContainsKey(RawEffects[i].Type.FullName + ":" + RawEffects[i].Name))
                 {
-                    Effect effect = (Effect)(RawEffects[i].GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-
-                    if ((effect.Category != EffectCategory.DoNotDisplay //effects that don't want to be shown
-                        || effect is RotateZoomEffect) //unless it's the rotatezoomeffect which hides itself from the ffects menu so it can be put in Layers
-                        && !AvailableEffects.ContainsKey(RawEffects[i].FullName + ":" + effect.Name))
-                    {
-                        AvailableEffects.Add(RawEffects[i].FullName + ":" + effect.Name, RawEffects[i]);
-                        AvailableEffectsNames.Add(effect.Name);
-                        AvailableEffectsIcons.Add(effect.Image);
-                        SearchResultEffects.Add(RawEffects[i].FullName + ":" + effect.Name);
-                        SearchResultIndices.Add(i, i);
-                    }
-                    else
-                    {
-                        RawEffects.RemoveAt(i);
-                        --i;
-                    }
-                }
-                catch
-                {
-                    RawEffects.RemoveAt(i);
-                    --i;
+                    AvailableEffects.Add(RawEffects[i].Type.FullName + ":" + RawEffects[i].Name, RawEffects[i]);
+                    AvailableEffectsNames.Add(RawEffects[i].Name);
+                    AvailableEffectsIcons.Add(RawEffects[i].Image);
+                    SearchResultEffects.Add(RawEffects[i].Type.FullName + ":" + RawEffects[i].Name);
+                    SearchResultIndices.Add(i, i);
                 }
             }
 
             lbAvailable.Items.AddRange(AvailableEffectsNames.ToArray());
             lbAvailable.Invalidate();
+
+            base.OnLoad(e);
         }
 
         void lbScript_DrawItem(object sender, DrawItemEventArgs e)
@@ -111,7 +85,7 @@ namespace pyrochild.effects.scriptlab
                 Image icon = step.Icon;
                 string text = step.Name;
 
-                if (step.EffectType == null) //effect wasn't found
+                if (!step.EffectAvailable) //effect wasn't found
                 {
                     e.Graphics.DrawRectangle(Pens.Red, Rectangle.Inflate(e.Bounds, -1, -1));
                     e.Graphics.FillRectangle(new SolidBrush(Color.FromArgb(127, Color.Red)), Rectangle.Inflate(e.Bounds, -1, -1));
@@ -237,8 +211,8 @@ namespace pyrochild.effects.scriptlab
             {
                 ConfigToken token = (ConfigToken)theEffectToken;
                 string effectidentifiername = SearchResultEffects[lbAvailable.SelectedIndex];
-                Type t = AvailableEffects[effectidentifiername];
-                Effect effect = (Effect)t.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                IEffectInfo effectInfo = AvailableEffects[effectidentifiername];
+                Effect effect = effectInfo.CreateInstance();
                 effect.EnvironmentParameters = Effect.EnvironmentParameters;
                 effect.Services = Services;
                 if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
@@ -250,23 +224,23 @@ namespace pyrochild.effects.scriptlab
 
                         if (dialog.ShowDialog(this) == DialogResult.OK)
                         {
-                            token.effects.Add(new ScriptStep(effect.Name, effect.Image, t, dialog.EffectToken, Effect.EnvironmentParameters.PrimaryColor, Effect.EnvironmentParameters.SecondaryColor));
-                            lbScript.Items.Add(effect.Name);
+                            token.effects.Add(new ScriptStep(effectInfo, dialog.EffectToken, Effect.EnvironmentParameters.PrimaryColor, Effect.EnvironmentParameters.SecondaryColor));
+                            lbScript.Items.Add(effectInfo.Name);
                             FinishTokenUpdate();
                         }
                     }
                     catch (Exception e)
                     {
                         MessageBox.Show(this,
-                            "Error occurred in configuration dialog for " + effect.Name + ":\n\n" + e.ToString(),
-                            effect.Name+" Error",
+                            "Error occurred in configuration dialog for " + effectInfo.Name + ":\n\n" + e.ToString(),
+                            effectInfo.Name+" Error",
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
                 else
                 {
-                    token.effects.Add(new ScriptStep(effect.Name, effect.Image, t, null, Effect.EnvironmentParameters.PrimaryColor, Effect.EnvironmentParameters.SecondaryColor));
-                    lbScript.Items.Add(effect.Name);
+                    token.effects.Add(new ScriptStep(effectInfo, null, Effect.EnvironmentParameters.PrimaryColor, Effect.EnvironmentParameters.SecondaryColor));
+                    lbScript.Items.Add(effectInfo.Name);
                     FinishTokenUpdate();
                 }
             }
@@ -351,10 +325,10 @@ namespace pyrochild.effects.scriptlab
                 ConfigToken token = (ConfigToken)theEffectToken;
                 int i = lbScript.SelectedIndex;
                 ScriptStep step = token.effects[i];
-                Type type = step.EffectType;
-                if (type != null)
+
+                if (step.EffectAvailable)
                 {
-                    Effect effect = (Effect)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                    Effect effect = step.CreateInstance();
                     effect.EnvironmentParameters = Effect.EnvironmentParameters;
                     effect.Services = Services;
                     if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
@@ -464,10 +438,10 @@ namespace pyrochild.effects.scriptlab
                     sw.WriteLine();
 
                     string effectname = sls.Effects[i];
-                    Type effecttype;
-                    if (AvailableEffects.TryGetValue(effectname, out effecttype))
+                    IEffectInfo effectInfo;
+                    if (AvailableEffects.TryGetValue(effectname, out effectInfo))
                     {
-                        Effect effect = (Effect)effecttype.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                        Effect effect = effectInfo.CreateInstance();
                         effect.EnvironmentParameters = Effect.EnvironmentParameters;
                         effect.Services = Services;
                         if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
@@ -681,7 +655,7 @@ namespace pyrochild.effects.scriptlab
                     {
                         name = name.Remove(name.IndexOf("&"), 1);
                     }
-                    Effect effect = (Effect)AvailableEffects[keyenumerator.Current].GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                    IEffectInfo effect = AvailableEffects[keyenumerator.Current];
                     if (name.ToLower().Contains(txtSearch.Text.ToLower())
                         || (effect.SubMenuName != null && effect.SubMenuName.ToLower().Contains(txtSearch.Text.ToLower())))
                     {
@@ -853,10 +827,10 @@ namespace pyrochild.effects.scriptlab
                 ConfigToken token = (ConfigToken)theEffectToken;
                 int i = lbScript.SelectedIndex;
                 ScriptStep step = token.effects[i];
-                Type type = step.EffectType;
-                if (type != null)
+
+                if (step.EffectAvailable)
                 {
-                    Effect effect = (Effect)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                    Effect effect = step.CreateInstance();
                     if (effect.Options.Flags.HasFlag(EffectFlags.Configurable))
                     {
                         btnChange.Enabled = true;

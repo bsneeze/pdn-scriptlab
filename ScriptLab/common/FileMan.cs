@@ -93,7 +93,6 @@ namespace pyrochild.effects.common
         }
         public static bool LoadFileXML(string fileName, Type type, out object loadedObject, XmlAttributeOverrides xao)
         {
-            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
             StreamReader sr = null;
             try
             {
@@ -111,21 +110,7 @@ namespace pyrochild.effects.common
             finally
             {
                 if (sr != null) sr.Close();
-                AppDomain.CurrentDomain.AssemblyResolve -= new ResolveEventHandler(CurrentDomain_AssemblyResolve);
             }
-        }
-
-        static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs e)
-        {
-            try
-            {
-                Assembly assembly = Assembly.Load(e.Name);
-                if (assembly != null)
-                    return assembly;
-            }
-
-            catch { }
-            return Assembly.GetExecutingAssembly();
         }
 
         public static bool SaveFileXML(string fileName, object saveMe)
@@ -134,7 +119,6 @@ namespace pyrochild.effects.common
         }
         public static bool SaveFileXML(string fileName, object saveMe, XmlAttributeOverrides xao)
         {
-            AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
             StreamWriter sw = null;
             try
             {
@@ -156,7 +140,6 @@ namespace pyrochild.effects.common
             finally
             {
                 if (sw != null) sw.Close();
-                AppDomain.CurrentDomain.AssemblyResolve -= new ResolveEventHandler(CurrentDomain_AssemblyResolve);
             }
         }
     }

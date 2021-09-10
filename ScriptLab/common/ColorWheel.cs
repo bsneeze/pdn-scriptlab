@@ -174,7 +174,7 @@ namespace pyrochild.effects.common
 
             for (int y = 0; y < sfc.Height; y++)
             {
-                ColorBgra* ptr = sfc.GetRowAddress(y);
+                ColorBgra* ptr = sfc.GetRowPointer(y);
                 float cy = radius - y;
                 float cy2 = cy * cy;
                 for (int x = 0; x < sfc.Width; x++)

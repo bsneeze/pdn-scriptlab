@@ -47,7 +47,7 @@ namespace pyrochild.effects.common
         private Rectangle[][] tileRegions;
         private PdnRegion[] tilePdnRegions;
         private int tileCount;
-        private PrivateThreadPool threadPool;
+        private EffectRendererWorkItemQueue threadPool;
         private RenderArgs dstArgs;
         private RenderArgs srcArgs;
         private int workerThreads;
@@ -171,7 +171,7 @@ namespace pyrochild.effects.common
                 {
                     // dstArgs = (srcArgs * (1 - clipMask)) + (dstArgs * clipMask)
                     // TODO: optimize, or at least refactor into its own method
-                    using (ISurface<ColorAlpha8> clipMask = clipMaskRenderer.UseTileOrToSurface(bounds))
+                    using (ISurface<ColorAlpha8> clipMask = clipMaskRenderer.ToSurface(bounds))
                     {
                         int width = bounds.Width;
                         int height = bounds.Height;
@@ -183,14 +183,14 @@ namespace pyrochild.effects.common
                         int srcStride = srcArgs.Surface.Stride;
                         int clipMaskStride = clipMask.Stride;
 
-                        ColorBgra* dstNextRowPtr = dstArgs.Surface.GetPointAddress(left, top);
-                        ColorBgra* srcNextRowPtr = srcArgs.Surface.GetPointAddress(left, top);
+                        ColorBgra* dstNextRowPtr = dstArgs.Surface.GetPointPointer(left, top);
+                        ColorBgra* srcNextRowPtr = srcArgs.Surface.GetPointPointer(left, top);
                         byte* clipMaskNextRowPtr = (byte*)clipMask.Scan0;
 
                         int rows = height;
                         while (rows > 0)
                         {
-                            ColorBgra.Underwrite(srcNextRowPtr, dstNextRowPtr, clipMaskNextRowPtr, width);
+                            Underwrite(srcNextRowPtr, dstNextRowPtr, clipMaskNextRowPtr, width);
 
                             dstNextRowPtr = (ColorBgra*)((byte*)dstNextRowPtr + dstStride);
                             srcNextRowPtr = (ColorBgra*)((byte*)srcNextRowPtr + srcStride);
@@ -199,6 +199,42 @@ namespace pyrochild.effects.common
                         }
                     }
                 }
+            }
+        }
+
+        private static unsafe void Underwrite(ColorBgra* pSrc1, ColorBgra* pDstSrc2, byte* pSrc2A, int length)
+        {
+            int skipCount = 0;
+            while ((length - skipCount) > 0 && (*(pSrc2A + skipCount)) == 255)
+            {
+                ++skipCount;
+            }
+
+            length -= skipCount;
+            pSrc1 += skipCount;
+            pDstSrc2 += skipCount;
+            pSrc2A += skipCount;
+
+            while (length > 0)
+            {
+                byte src2A = *pSrc2A;
+                if (src2A == 255)
+                {
+                    // pDstSrc2 already equals what it should be
+                }
+                else if (src2A == 0)
+                {
+                    *pDstSrc2 = *pSrc1;
+                }
+                else
+                {
+                    *pDstSrc2 = ColorBgra.Blend(*pSrc1, *pDstSrc2, src2A);
+                }
+
+                --length;
+                ++pSrc1;
+                ++pDstSrc2;
+                ++pSrc2A;
             }
         }
 
@@ -249,10 +285,10 @@ namespace pyrochild.effects.common
                         token = effectTokenCopy.CloneT();
                     }
 
-                    threadPool.QueueUserWorkItem(rcwc, token);
+                    this.threadPool.Enqueue(() => rcwc(token));
                 }
 
-                threadPool.Drain();
+                threadPool.Join();
 
                 /*
                 if (i == this.workerThreads)
@@ -275,7 +311,7 @@ namespace pyrochild.effects.common
                 {
                     try
                     {
-                        threadPoolP.Drain();
+                        threadPoolP.Join();
                     }
 
                     catch (Exception)
@@ -380,7 +416,7 @@ namespace pyrochild.effects.common
                 }
 
                 Join();
-                threadPool.Drain();
+                threadPool.Join();
             }
         }
 
@@ -590,7 +626,10 @@ namespace pyrochild.effects.common
 
             this.clipMaskRenderer = clipMaskRenderer;
 
-            threadPool = new PrivateThreadPool(this.workerThreads, false);
+            threadPool = new EffectRendererWorkItemQueue(
+                MultithreadedWorkItemDispatcher.Default,
+                WorkItemQueuePriority.Normal,
+                workerThreads);
         }
 
         ~BackgroundEffectRenderer()
