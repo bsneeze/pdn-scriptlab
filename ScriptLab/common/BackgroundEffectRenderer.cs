@@ -190,7 +190,7 @@ namespace pyrochild.effects.common
                         int rows = height;
                         while (rows > 0)
                         {
-                            ColorBgra.Underwrite(srcNextRowPtr, dstNextRowPtr, clipMaskNextRowPtr, width);
+                            Underwrite(srcNextRowPtr, dstNextRowPtr, clipMaskNextRowPtr, width);
 
                             dstNextRowPtr = (ColorBgra*)((byte*)dstNextRowPtr + dstStride);
                             srcNextRowPtr = (ColorBgra*)((byte*)srcNextRowPtr + srcStride);
@@ -199,6 +199,42 @@ namespace pyrochild.effects.common
                         }
                     }
                 }
+            }
+        }
+
+        private static unsafe void Underwrite(ColorBgra* pSrc1, ColorBgra* pDstSrc2, byte* pSrc2A, int length)
+        {
+            int skipCount = 0;
+            while ((length - skipCount) > 0 && (*(pSrc2A + skipCount)) == 255)
+            {
+                ++skipCount;
+            }
+
+            length -= skipCount;
+            pSrc1 += skipCount;
+            pDstSrc2 += skipCount;
+            pSrc2A += skipCount;
+
+            while (length > 0)
+            {
+                byte src2A = *pSrc2A;
+                if (src2A == 255)
+                {
+                    // pDstSrc2 already equals what it should be
+                }
+                else if (src2A == 0)
+                {
+                    *pDstSrc2 = *pSrc1;
+                }
+                else
+                {
+                    *pDstSrc2 = ColorBgra.Blend(*pSrc1, *pDstSrc2, src2A);
+                }
+
+                --length;
+                ++pSrc1;
+                ++pDstSrc2;
+                ++pSrc2A;
             }
         }
 
