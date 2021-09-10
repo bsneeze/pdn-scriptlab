@@ -171,7 +171,7 @@ namespace pyrochild.effects.common
                 {
                     // dstArgs = (srcArgs * (1 - clipMask)) + (dstArgs * clipMask)
                     // TODO: optimize, or at least refactor into its own method
-                    using (ISurface<ColorAlpha8> clipMask = clipMaskRenderer.UseTileOrToSurface(bounds))
+                    using (ISurface<ColorAlpha8> clipMask = clipMaskRenderer.ToSurface(bounds))
                     {
                         int width = bounds.Width;
                         int height = bounds.Height;
